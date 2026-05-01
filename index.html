@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KBN STREAM TV PRO - Sports Edition</title>
+    <title>KBN STREAM TV PRO - Multi-Language Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         :root { --primary: #00d2ff; --bg: #050a14; --card: rgba(255, 255, 255, 0.05); }
         body { margin: 0; font-family: sans-serif; background: #000; color: #fff; overflow: hidden; height: 100vh; }
         
-        /* --- شاشة الترحيب مع تكبير الشعار --- */
+        /* شاشة الترحيب مع الشعار المكبر */
         #splash { 
             position: fixed; inset: 0; 
             background: radial-gradient(circle, #101a30 0%, #050a14 100%); 
@@ -19,8 +19,8 @@
         }
         
         .loader-logo { 
-            width: 450px; /* تم تكبير الصورة هنا */
-            max-width: 80%; /* لضمان عدم الخروج عن شاشات الجوال */
+            width: 450px; /* شعار مكبر بناءً على طلبك */
+            max-width: 85%;
             height: auto;
             filter: drop-shadow(0 0 30px rgba(0, 210, 255, 0.8)); 
             animation: pulse 2.5s infinite ease-in-out; 
@@ -37,15 +37,15 @@
         }
         #ui-wrapper.ui-hidden { transform: translateX(100%); opacity: 0; pointer-events: none; }
 
-        header { background: rgba(20, 20, 20, 0.85); padding: 25px; display: flex; gap: 20px; justify-content: flex-end; padding-right: 50px; }
-        .nav-item { padding: 14px 35px; border-radius: 30px; cursor: pointer; background: var(--card); outline: none; border: 2px solid transparent; transition: 0.3s; font-weight: bold; font-size: 18px; }
+        header { background: rgba(20, 20, 20, 0.85); padding: 20px; display: flex; gap: 15px; justify-content: flex-end; padding-right: 50px; }
+        .nav-item { padding: 12px 25px; border-radius: 30px; cursor: pointer; background: var(--card); outline: none; border: 2px solid transparent; transition: 0.3s; font-weight: bold; font-size: 16px; }
         
         .nav-item:focus, .channel:focus { background: var(--primary) !important; color: #000 !important; border-color: #fff; transform: scale(1.08); box-shadow: 0 0 25px var(--primary); }
         .active-nav { border-bottom: 4px solid var(--primary); }
 
         .main-container { display: flex; flex: 1; overflow: hidden; justify-content: flex-end; }
         #channels { width: 400px; background: rgba(10, 10, 10, 0.6); overflow-y: auto; padding: 20px; }
-        .channel { padding: 20px; margin-bottom: 12px; background: var(--card); border-radius: 15px; cursor: pointer; outline: none; display: flex; align-items: center; gap: 15px; font-size: 19px; text-align: right; }
+        .channel { padding: 18px; margin-bottom: 10px; background: var(--card); border-radius: 12px; cursor: pointer; outline: none; display: flex; align-items: center; gap: 15px; font-size: 18px; text-align: right; }
         
         #player-container { position: fixed; inset: 0; z-index: 1; background: #000; }
         video { width: 100%; height: 100%; object-fit: contain; }
@@ -57,11 +57,11 @@
 
 <div id="splash">
     <img src="logo.png" alt="KBN Logo" class="loader-logo" onerror="this.src='https://via.placeholder.com/450x250?text=KBN+STREAM'">
-    <h1 style="color: var(--primary); margin-top: 30px; letter-spacing: 2px;">KBN STREAM TV</h1>
+    <h1 style="color: var(--primary); margin-top: 20px;">KBN STREAM TV</h1>
 </div>
 
 <div id="player-container">
-    <div id="vid-loading" class="status-msg">جاري الاتصال بالبث المباشر...</div>
+    <div id="vid-loading" class="status-msg">جاري تحميل البث...</div>
     <video id="video" autoplay></video>
 </div>
 
@@ -69,11 +69,12 @@
     <header>
         <div class="nav-item" tabindex="0" id="btn-ara" onclick="fetchM3U('https://iptv-org.github.io/iptv/languages/ara.m3u', this)">🌍 قنوات عربية</div>
         <div class="nav-item" tabindex="0" id="btn-sports" onclick="fetchM3U('https://iptv-org.github.io/iptv/categories/sports.m3u', this)">⚽ قنوات رياضية</div>
+        <div class="nav-item" tabindex="0" id="btn-fr" onclick="fetchM3U('https://iptv-org.github.io/iptv/countries/fr.m3u', this)">🇫🇷 قنوات فرنسية</div>
     </header>
 
     <div class="main-container">
         <div id="channels">
-            <div style="text-align:center; padding:60px; color:#aaa; font-size: 18px;">اضغط OK على الباقة للبدء</div>
+            <div style="text-align:center; padding:60px; color:#aaa;">اختر باقة لعرض القنوات</div>
         </div>
     </div>
 </div>
@@ -91,7 +92,7 @@ window.onload = () => {
 
 async function fetchM3U(url, element) {
     const container = document.getElementById('channels');
-    container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--primary);">جاري تحميل القائمة...</div>';
+    container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--primary);">جاري التحميل...</div>';
     
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active-nav'));
     element.classList.add('active-nav');
@@ -157,9 +158,7 @@ function playChannel(url) {
             loading.style.display = 'none';
             toggleUI(false); 
         });
-        hlsInstance.on(Hls.Events.ERROR, () => {
-            loading.innerText = "❌ خطأ في البث";
-        });
+        hlsInstance.on(Hls.Events.ERROR, () => { loading.innerText = "❌ خطأ في البث"; });
     } else {
         video.src = url;
         toggleUI(false);
@@ -205,7 +204,13 @@ document.addEventListener('keydown', function(e) {
         case 'ArrowLeft':
             if(active.classList.contains('nav-item')) {
                 const navs = document.querySelectorAll('.nav-item');
-                active === navs[0] ? navs[1].focus() : navs[0].focus();
+                if (e.key === 'ArrowRight') {
+                    if (active === navs[0]) navs[1].focus();
+                    else if (active === navs[1]) navs[2].focus();
+                } else {
+                    if (active === navs[2]) navs[1].focus();
+                    else if (active === navs[1]) navs[0].focus();
+                }
             }
             break;
         case 'Escape':
