@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KBN STREAM TV PRO - Smart Focus</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        :root { --primary: #00d2ff; --bg: #050a14; --card: rgba(255, 255, 255, 0.05); }
+        body { margin: 0; font-family: sans-serif; background: #000; color: #fff; overflow: hidden; height: 100vh; }
+        
+        /* شاشة الترحيب */
+        #splash { position: fixed; inset: 0; background: #050a14; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.8s; }
+        .loader-logo { width: 100px; filter: drop-shadow(0 0 15px var(--primary)); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        .hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+        /* واجهة التحكم قابلة للإخفاء */
+        #ui-wrapper {
+            position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column;
+            background: linear-gradient(to left, rgba(5, 10, 20, 0.95) 400px, transparent);
+            transition: 0.5s ease-in-out;
+        }
+        #ui-wrapper.ui-hidden { transform: translateX(100%); opacity: 0; pointer-events: none; }
+
+        header { background: rgba(20, 20, 20, 0.8); padding: 20px; display: flex; gap: 20px; justify-content: flex-end; padding-right: 50px; }
+        .nav-item { padding: 12px 30px; border-radius: 30px; cursor: pointer; background: var(--card); outline: none; border: 2px solid transparent; transition: 0.3s; font-weight: bold; }
+        
+        /* تأثير التركيز للريموت */
+        .nav-item:focus, .channel:focus { background: var(--primary) !important; color: #000 !important; border-color: #fff; transform: scale(1.05); box-shadow: 0 0 20px var(--primary); }
+        .active-nav { border-bottom: 3px solid var(--primary); }
+
+        .main-container { display: flex; flex: 1; overflow: hidden; justify-content: flex-end; }
+        #channels { width: 380px; background: rgba(10, 10, 10, 0.5); overflow-y: auto; padding: 15px; }
+        .channel { padding: 18px; margin-bottom: 10px; background: var(--card); border-radius: 12px; cursor: pointer; outline: none; display: flex; align-items: center; gap: 15px; font-size: 18px; text-align: right; }
+        
+        /* مشغل الفيديو */
+        #player-container { position: fixed; inset: 0; z-index: 1; background: #000; }
+        video { width: 100%; height: 100%; object-fit: contain; }
+        
+        .status-msg { position: absolute; bottom: 50px; right: 50px; color: var(--primary); font-weight: bold; z-index: 2; background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+<div id="splash">
+    <div class="loader-logo">📺</div>
+    <h2 style="color: var(--primary); margin-top: 20px;">KBN STREAM TV</h2>
+</div>
+
+<div id="player-container">
+    <div id="vid-loading" class="status-msg">جاري تحميل القناة...</div>
+    <video id="video" autoplay></video>
+</div>
+
+<div id="ui-wrapper">
+    <header>
+        <div class="nav-item" tabindex="0" id="btn-ara" onclick="fetchM3U('https://iptv-org.github.io/iptv/languages/ara.m3u', this)">🌍 قنوات عربية</div>
+        <div class="nav-item" tabindex="0" id="btn-global" onclick="fetchM3U('https://iptv-org.github.io/iptv/index.m3u', this)">🎬 قنوات عالمية</div>
+    </header>
+
+    <div class="main-container">
+        <div id="channels">
+            <div style="text-align:center; padding:50px; color:#888;">اضغط OK على الباقة لعرض القنوات</div>
+        </div>
+    </div>
+</div>
+
+<script>
+let hlsInstance = null;
+let isUiVisible = true;
+
+// إخفاء الترحيب
+window.onload = () => {
+    setTimeout(() => {
+        document.getElementById('splash').classList.add('hidden');
+        document.getElementById('btn-ara').focus();
+    }, 2500);
+};
+
+// جلب القنوات
+async function fetchM3U(url, element) {
+    const container = document.getElementById('channels');
+    container.innerHTML = '<div style="text-align:center; padding:20px;">جاري التحميل...</div>';
+    
+    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active-nav'));
+    element.classList.add('active-nav');
+
+    try {
+        const response = await fetch(url);
+        const text = await response.text();
+        const channels = parseM3U(text);
+        renderChannels(channels);
+        
+        // ميزة جديدة: الانتقال التلقائي لأول قناة عند النقر على الباقة
+        setTimeout(() => {
+            if(container.firstChild) container.firstChild.focus();
+        }, 100);
+
+    } catch (err) {
+        container.innerHTML = `<div style="text-align:center; padding:20px; color:red;">❌ خطأ في الاتصال</div>`;
+    }
+}
+
+function parseM3U(content) {
+    let lines = content.split('\n');
+    let result = [];
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes('#EXTINF')) {
+            let name = lines[i].split(',')[1] || "قناة";
+            let url = lines[i+1]?.trim();
+            if (url && url.startsWith('http')) result.push({name: name.trim(), url: url});
+        }
+    }
+    return result;
+}
+
+function renderChannels(list) {
+    const container = document.getElementById('channels');
+    container.innerHTML = '';
+    list.slice(0, 300).forEach((ch) => {
+        let div = document.createElement('div');
+        div.className = 'channel';
+        div.setAttribute('tabindex', '0');
+        div.innerHTML = `<span>▶</span> ${ch.name}`;
+        
+        div.onclick = () => playChannel(ch.url);
+        div.onkeydown = (e) => { if(e.key === 'Enter') playChannel(ch.url); };
+        
+        container.appendChild(div);
+    });
+}
+
+function playChannel(url) {
+    const video = document.getElementById('video');
+    const loading = document.getElementById('vid-loading');
+    loading.style.display = 'block';
+
+    if (hlsInstance) hlsInstance.destroy();
+
+    if (Hls.isSupported()) {
+        hlsInstance = new Hls();
+        hlsInstance.loadSource(url);
+        hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+            video.play();
+            loading.style.display = 'none';
+            toggleUI(false); // إخفاء السلايد عند بدء التشغيل
+        });
+    } else {
+        video.src = url;
+        toggleUI(false);
+    }
+}
+
+// وظيفة إظهار وإخفاء الواجهة
+function toggleUI(show) {
+    const ui = document.getElementById('ui-wrapper');
+    if (show) {
+        ui.classList.remove('ui-hidden');
+        isUiVisible = true;
+        // التركيز على القناة الحالية أو الباقة
+        document.querySelector('.nav-item').focus();
+    } else {
+        ui.classList.add('ui-hidden');
+        isUiVisible = false;
+        document.activeElement.blur(); // إزالة الفوكيس لعدم التشويش
+    }
+}
+
+// التحكم بالريموت
+document.addEventListener('keydown', function(e) {
+    // إذا كانت الواجهة مخفية، أي ضغط على OK يظهرها
+    if (!isUiVisible) {
+        if (e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            toggleUI(true);
+        }
+        return;
+    }
+
+    const active = document.activeElement;
+    
+    if (e.key === 'ArrowDown') {
+        const next = active.nextElementSibling;
+        if (next) next.focus();
+    } 
+    else if (e.key === 'ArrowUp') {
+        const prev = active.previousElementSibling;
+        if (prev) prev.focus();
+        else if (active.classList.contains('channel')) {
+            document.querySelector('.active-nav').focus();
+        }
+    }
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        if(active.classList.contains('nav-item')) {
+            const navs = document.querySelectorAll('.nav-item');
+            active === navs[0] ? navs[1].focus() : navs[0].focus();
+        }
+    }
+    // زر العودة (Back) لإخفاء القائمة أيضاً
+    else if (e.key === 'Escape' || e.key === 'Backspace') {
+        toggleUI(false);
+    }
+});
+</script>
+</body>
+</html>
