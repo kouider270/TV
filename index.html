@@ -3,97 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KBN STREAM TV PRO - Full Remote Control</title>
+    <title>KBN STREAM TV - Key Navigation</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        :root { --primary: #00d2ff; --bg: #050a14; --card: rgba(255, 255, 255, 0.07); }
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: #000; color: #fff; overflow: hidden; height: 100vh; }
+        :root { --primary: #00d2ff; --bg: #050a14; --card: rgba(255, 255, 255, 0.1); }
+        body { margin: 0; font-family: sans-serif; background: #000; color: #fff; overflow: hidden; height: 100vh; }
         
-        /* شاشة الترحيب بالشعار المكبر */
-        #splash { 
-            position: fixed; inset: 0; background: radial-gradient(circle, #101a30 0%, #050a14 100%); 
-            z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            transition: opacity 0.8s; 
-        }
-        .loader-logo { width: 450px; max-width: 85%; height: auto; filter: drop-shadow(0 0 30px var(--primary)); animation: pulse 2.5s infinite; }
+        /* شاشة الترحيب */
+        #splash { position: fixed; inset: 0; background: #050a14; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.8s; }
+        .loader-logo { width: 450px; filter: drop-shadow(0 0 30px var(--primary)); animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 
-        /* واجهة التحكم الذكية */
+        /* الواجهة */
         #ui-wrapper {
             position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column;
-            background: linear-gradient(to left, rgba(5, 10, 20, 0.98) 420px, transparent);
-            transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(to left, rgba(5, 10, 20, 0.95) 450px, transparent);
+            transition: 0.5s ease;
         }
-        #ui-wrapper.ui-hidden { transform: translateX(100%); opacity: 0; pointer-events: none; }
+        #ui-wrapper.ui-hidden { transform: translateX(100%); opacity: 0; }
 
-        header { background: rgba(20, 20, 20, 0.9); padding: 25px; display: flex; gap: 15px; justify-content: flex-end; padding-right: 50px; }
+        header { background: rgba(20, 20, 20, 0.9); padding: 25px; display: flex; gap: 20px; justify-content: center; }
         
-        /* تصميم أزرار الباقات مع تأثير التركيز (Focus) */
-        .nav-item { 
-            padding: 15px 30px; border-radius: 40px; cursor: pointer; background: var(--card); 
-            outline: none; border: 3px solid transparent; transition: 0.3s; font-weight: bold; font-size: 18px; 
+        /* أهم جزء: شكل العنصر عندما يكون عليه الـ Focus */
+        .focusable {
+            padding: 15px 30px; border-radius: 15px; background: var(--card);
+            outline: none; border: 3px solid transparent; transition: 0.2s;
+            cursor: pointer; font-weight: bold;
         }
-        
-        /* حالة التركيز عبر الريموت */
-        .nav-item:focus, .channel:focus { 
-            background: var(--primary) !important; 
-            color: #000 !important; 
-            border-color: #fff; 
-            transform: scale(1.1); 
+        /* تأثير التلفاز الحقيقي */
+        .focusable.focused {
+            background: var(--primary) !important;
+            color: #000 !important;
+            border-color: #fff;
+            transform: scale(1.1);
             box-shadow: 0 0 30px var(--primary);
-            z-index: 10;
         }
-
-        .active-nav { border-bottom: 5px solid var(--primary); background: rgba(0, 210, 255, 0.1); }
 
         .main-container { display: flex; flex: 1; overflow: hidden; justify-content: flex-end; }
+        #channels { width: 400px; background: rgba(10, 10, 10, 0.7); overflow-y: auto; padding: 20px; }
         
-        #channels { 
-            width: 420px; background: rgba(10, 10, 10, 0.7); 
-            overflow-y: auto; padding: 20px; scroll-behavior: smooth;
-        }
+        .channel { padding: 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; font-size: 18px; text-align: right; }
 
-        /* تصميم القنوات لسهولة اختيارها بالريموت */
-        .channel { 
-            padding: 22px; margin-bottom: 15px; background: var(--card); 
-            border-radius: 15px; cursor: pointer; outline: none; 
-            display: flex; align-items: center; gap: 20px; font-size: 20px; text-align: right; 
-            border: 2px solid transparent;
-        }
-        
         #player-container { position: fixed; inset: 0; z-index: 1; background: #000; }
         video { width: 100%; height: 100%; object-fit: contain; }
-        
-        .status-msg { 
-            position: absolute; bottom: 50px; right: 50px; color: var(--primary); 
-            z-index: 2; background: rgba(0,0,0,0.8); padding: 15px 30px; 
-            border-radius: 15px; display: none; font-size: 20px; 
-        }
     </style>
 </head>
 <body>
 
 <div id="splash">
-    <img src="logo.png" alt="KBN Logo" class="loader-logo" onerror="this.src='https://via.placeholder.com/450x250?text=KBN+STREAM'">
-    <h1 style="color: var(--primary); margin-top: 25px;">KBN STREAM TV</h1>
+    <img src="logo.png" class="loader-logo">
+    <h1 style="color: var(--primary)">KBN STREAM TV</h1>
 </div>
 
 <div id="player-container">
-    <div id="vid-loading" class="status-msg">جاري تحميل البث...</div>
     <video id="video" autoplay></video>
 </div>
 
 <div id="ui-wrapper">
-    <header>
-        <div class="nav-item" tabindex="0" id="btn-ara" onclick="fetchM3U('https://iptv-org.github.io/iptv/languages/ara.m3u', this)">🌍 عربية</div>
-        <div class="nav-item" tabindex="0" id="btn-sports" onclick="fetchM3U('https://iptv-org.github.io/iptv/categories/sports.m3u', this)">⚽ رياضة</div>
-        <div class="nav-item" tabindex="0" id="btn-fr" onclick="fetchM3U('https://iptv-org.github.io/iptv/countries/fr.m3u', this)">🇫🇷 فرنسية</div>
+    <header id="nav-bar">
+        <div class="focusable nav-item" data-url="https://iptv-org.github.io/iptv/languages/ara.m3u">🌍 عربية</div>
+        <div class="focusable nav-item" data-url="https://iptv-org.github.io/iptv/categories/sports.m3u">⚽ رياضة</div>
+        <div class="focusable nav-item" data-url="https://iptv-org.github.io/iptv/countries/fr.m3u">🇫🇷 فرنسية</div>
     </header>
 
     <div class="main-container">
         <div id="channels">
-            <div style="text-align:center; padding:60px; color:#aaa; font-size: 22px;">استخدم الأسهم للتحكم</div>
+            <p style="text-align:center;color:#666">استخدم الأسهم و Enter</p>
         </div>
     </div>
 </div>
@@ -101,158 +77,106 @@
 <script>
 let hlsInstance = null;
 let isUiVisible = true;
+let focusIndex = 0; // مؤشر العنصر المختار حالياً
 
-// تشغيل شاشة الترحيب وضبط التركيز الأول
-window.onload = () => {
-    setTimeout(() => {
-        document.getElementById('splash').classList.add('hidden');
-        document.getElementById('btn-ara').focus(); // أول تركيز عند التشغيل
-    }, 3500);
-};
+// إخفاء الترحيب
+setTimeout(() => {
+    document.getElementById('splash').classList.add('hidden');
+    updateFocus();
+}, 3000);
 
-// جلب القنوات
-async function fetchM3U(url, element) {
-    const container = document.getElementById('channels');
-    container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--primary);">جاري التحميل...</div>';
+// محرك التحكم بلوحة المفاتيح (الأسهم + Enter)
+document.addEventListener('keydown', (e) => {
+    if (!isUiVisible) {
+        if (e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown') toggleUI(true);
+        return;
+    }
+
+    const items = document.querySelectorAll('.focusable');
     
-    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active-nav'));
-    element.classList.add('active-nav');
-
-    try {
-        const response = await fetch(url);
-        const text = await response.text();
-        const channels = parseM3U(text);
-        renderChannels(channels);
-        
-        // الانتقال التلقائي لأول قناة عند الضغط على باقة
-        setTimeout(() => {
-            const firstChannel = container.querySelector('.channel');
-            if(firstChannel) firstChannel.focus();
-        }, 200);
-
-    } catch (err) {
-        container.innerHTML = `<div style="text-align:center; padding:30px; color:red;">❌ خطأ في التحميل</div>`;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') {
+        if (focusIndex < items.length - 1) focusIndex++;
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowRight') {
+        if (focusIndex > 0) focusIndex--;
+    } else if (e.key === 'Enter') {
+        items[focusIndex].click(); // تنفيذ النقر عند ضغط Enter
+    } else if (e.key === 'Escape' || e.key === 'Backspace') {
+        toggleUI(false);
     }
-}
+    
+    updateFocus();
+});
 
-function parseM3U(content) {
-    let lines = content.split('\n');
-    let result = [];
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes('#EXTINF')) {
-            let name = lines[i].split(',')[1] || "قناة";
-            let url = lines[i+1]?.trim();
-            if (url && url.startsWith('http')) result.push({name: name.trim(), url: url});
+// تحديث الشكل البصري للتركيز
+function updateFocus() {
+    const items = document.querySelectorAll('.focusable');
+    items.forEach((item, index) => {
+        if (index === focusIndex) {
+            item.classList.add('focused');
+            item.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        } else {
+            item.classList.remove('focused');
         }
-    }
-    return result;
-}
-
-function renderChannels(list) {
-    const container = document.getElementById('channels');
-    container.innerHTML = '';
-    list.slice(0, 300).forEach((ch) => {
-        let div = document.createElement('div');
-        div.className = 'channel';
-        div.setAttribute('tabindex', '0'); // تمكين نظام Focus
-        div.innerHTML = `<span>●</span> ${ch.name}`;
-        
-        // ربط الحدث بزر OK وبالنقر
-        const playAction = () => playChannel(ch.url);
-        div.onclick = playAction;
-        div.onkeydown = (e) => { if(e.key === 'Enter') playAction(); };
-        
-        container.appendChild(div);
     });
 }
 
+// وظيفة جلب القنوات
+async function loadBaqqa(url) {
+    const container = document.getElementById('channels');
+    container.innerHTML = '<p style="text-align:center">جاري التحميل...</p>';
+    
+    try {
+        const res = await fetch(url);
+        const text = await res.text();
+        const lines = text.split('\n');
+        container.innerHTML = '';
+
+        lines.forEach((line, i) => {
+            if (line.includes('#EXTINF')) {
+                const name = line.split(',')[1] || "قناة";
+                const streamUrl = lines[i+1]?.trim();
+                
+                if (streamUrl && streamUrl.startsWith('http')) {
+                    const div = document.createElement('div');
+                    div.className = 'focusable channel';
+                    div.innerText = "▶ " + name;
+                    div.onclick = () => playChannel(streamUrl);
+                    container.appendChild(div);
+                }
+            }
+        });
+        // بعد تحميل القنوات، نجعل التركيز ينتقل لأول قناة
+        focusIndex = 3; // تخطي أزرار الهيدر الثلاثة
+        updateFocus();
+    } catch (e) {
+        container.innerHTML = '❌ فشل التحميل';
+    }
+}
+
+// ربط أزرار الهيدر بالوظيفة
+document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.onclick = () => loadBaqqa(btn.dataset.url);
+});
+
 function playChannel(url) {
     const video = document.getElementById('video');
-    const loading = document.getElementById('vid-loading');
-    loading.style.display = 'block';
-
     if (hlsInstance) hlsInstance.destroy();
-
     if (Hls.isSupported()) {
         hlsInstance = new Hls();
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(video);
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
             video.play();
-            loading.style.display = 'none';
-            toggleUI(false); // إخفاء الواجهة للتركيز على الفيديو
+            toggleUI(false); // إخفاء القائمة عند التشغيل
         });
-    } else {
-        video.src = url;
-        toggleUI(false);
     }
 }
 
 function toggleUI(show) {
-    const ui = document.getElementById('ui-wrapper');
-    if (show) {
-        ui.classList.remove('ui-hidden');
-        isUiVisible = true;
-        document.querySelector('.active-nav').focus();
-    } else {
-        ui.classList.add('ui-hidden');
-        isUiVisible = false;
-        document.activeElement.blur(); 
-    }
+    isUiVisible = show;
+    document.getElementById('ui-wrapper').className = show ? '' : 'ui-hidden';
 }
-
-// --- نظام الملاحة الكامل بالريموت (أسهم + OK) ---
-document.addEventListener('keydown', function(e) {
-    // إظهار الواجهة عند ضغط أي زر إذا كانت مخفية
-    if (!isUiVisible) {
-        if (['Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-            toggleUI(true);
-        }
-        return;
-    }
-
-    const active = document.activeElement;
-    
-    switch(e.key) {
-        case 'ArrowDown':
-            const next = active.nextElementSibling;
-            if (next && next.classList.contains('channel')) {
-                next.focus();
-                next.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            }
-            break;
-            
-        case 'ArrowUp':
-            const prev = active.previousElementSibling;
-            if (prev && prev.classList.contains('channel')) {
-                prev.focus();
-                prev.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            } else if (active.classList.contains('channel')) {
-                // العودة للأزرار العلوية عند الخروج من القائمة من أعلى
-                document.querySelector('.active-nav').focus();
-            }
-            break;
-            
-        case 'ArrowRight':
-        case 'ArrowLeft':
-            if(active.classList.contains('nav-item')) {
-                const navs = Array.from(document.querySelectorAll('.nav-item'));
-                let idx = navs.indexOf(active);
-                if(e.key === 'ArrowRight' && idx > 0) navs[idx-1].focus();
-                if(e.key === 'ArrowLeft' && idx < navs.length-1) navs[idx+1].focus();
-            }
-            break;
-
-        case 'Enter':
-            // يتم التعامل مع Enter داخلياً عبر مستمعات الأحداث في العناصر
-            break;
-
-        case 'Escape':
-        case 'Backspace':
-            toggleUI(false);
-            break;
-    }
-});
 </script>
+
 </body>
 </html>
