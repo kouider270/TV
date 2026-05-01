@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KBN TV - Global Edition</title>
+    <title>KBN STREAM TV - Auto Filter</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         :root { --primary: #00d2ff; --bg: #050a14; }
@@ -45,6 +45,7 @@
 <body>
 
 <div id="splash">
+    <img src="logo.png" style="width:300px" onerror="this.style.display='none'">
     <h1 style="color: var(--primary)">KBN STREAM TV</h1>
 </div>
 
@@ -54,13 +55,13 @@
 
 <div id="ui-wrapper">
     <header id="nav-bar">
-        <div class="focusable nav-item" onclick="filterBy('Arabic', true)">🌍 عربية</div>
-        <div class="focusable nav-item" onclick="filterBy('News', true)">📰 أخبار</div>
-        <div class="focusable nav-item" onclick="filterBy('Sports', true)">⚽ رياضة</div>
-        <div class="focusable nav-item" onclick="filterBy('Movies', true)">🎬 أفلام</div>
-        <div class="focusable nav-item" onclick="filterBy('Doc', true)">📜 وثائقي</div>
-        <div class="focusable nav-item" onclick="filterBy('Islamic', true)">🕌 إسلامية</div>
-        <div class="focusable nav-item" onclick="filterBy('Foreign', true)">🌐 أجنبية</div>
+        <div class="focusable nav-item" onclick="filterByCategory('عربية')">🌍 عربية</div>
+        <div class="focusable nav-item" onclick="filterByCategory('اخبار')">📰 أخبار</div>
+        <div class="focusable nav-item" onclick="filterByCategory('رياضة')">⚽ رياضة</div>
+        <div class="focusable nav-item" onclick="filterByCategory('وثائقي')">📜 وثائقي</div>
+        <div class="focusable nav-item" onclick="filterByCategory('إسلامية')">🕌 إسلامية</div>
+        <div class="focusable nav-item" onclick="filterByCategory('اطفال')">👶 أطفال</div>
+        <div class="focusable nav-item" onclick="filterByCategory('Foreign')">🌐 أجنبية</div>
     </header>
     <div class="main-container">
         <div id="channels"></div>
@@ -68,19 +69,30 @@
 </div>
 
 <script>
+// القائمة التي أرفقتها كمرجع للفلترة 
+const mySelection = {
+    "عربية": ["2MMonde", "ChadaTV.ma", "Medi1TVArabic.ma", "Medi1TVMaghreb.ma", "AlArabiyaBusiness", "MoviesAction", "TV2.dz", "CNA.dz", "AmouYazidTV.dz", "JawharaTV.tn", "AlMaghribia.ma", "AlSouriyaTV.sy", "AlmagdTVMiddleEast.us", "AlQanat9.tr", "AmmanTV.jo", "BahrainTV.bh", "DW.de@Arabic", "ElsharqTV.tr", "FalastiniTV.ps", "HalaRamallah.ps", "JordanTV.jo", "MBC1.ae", "MBC1Egypt", "MBC4.ae", "MBC5.ae", "MBCDrama.ae", "MBCMasr2.eg", "MixHollywood.eg", "MoviesAction.sa", "OneTV.lb"],
+    "وثائقي": ["AlJazeeraDocumentary.qa", "AsharqDiscovery.sa", "AsharqDocumentary.sa", "OmanTVCultural.om"],
+    "اخبار": ["France24.fr@Arabic", "BBCArabic.uk", "Alarabiya.ae", "RTArabic.ru", "AlArabiyaBusiness.ae", "AlArabiyaPrograms.ae", "AlHadath.sa", "AlIraqiaNews.iq", "AlJadeed.lb", "AlJazeera.qa", "AlJazeeraMubasher.qa", "AsharqNews.sa", "SkyNewsArabia.ae", "TRTArabi.tr"],
+    "رياضة": ["AlkassOne.qa", "AlkassThree.qa", "AlkassFive.qa", "AlkassFour.qa", "AlkassSix.qa", "AlkassSeven.qa", "AlkassSHOOF.qa", "AlkassTwo.qa", "JordanSport.jo", "KTVSportPlus.kw"],
+    "إسلامية": ["HolyQuranRadioNablus.ps", "AlMadina.ps", "AlQuranAlKareemTV", "AlResalah.sa", "AlistiqamaTV.om", "Alquran.iq", "BahrainQuran.bh", "KaifaTV.jo", "MakkahTV.sa", "QuranRadio.sa"],
+    "اطفال": ["MBC3USA.us", "RoyaKids.jo", "RoyaKidsOriginals.jo", "SpacetoonArabic.ae", "TahaTV.lb"]
+};
+
 let allChannels = []; 
 let hlsInstance = null;
 let isUiVisible = true;
 let focusElements = [];
 let focusIndex = 0;
 let currentUrl = "";
+let hideTimeout;
 
-const SOURCE = "https://iptv-org.github.io/iptv/index.m3u";
+const SOURCE_URL = "https://iptv-org.github.io/iptv/index.m3u";
 
 window.onload = () => {
-    fetch(SOURCE).then(r => r.text()).then(t => {
+    fetch(SOURCE_URL).then(r => r.text()).then(t => {
         allChannels = parseM3U(t);
-        filterBy('Arabic');
+        filterByCategory('عربية');
     });
     setTimeout(() => document.getElementById('splash').classList.add('hidden'), 3000);
 };
@@ -90,39 +102,32 @@ function parseM3U(text) {
     let res = [];
     for (let i = 0; i < lines.length; i++) {
         if (lines[i].includes('#EXTINF')) {
-            const name = lines[i].split(',')[1] || "قناة";
-            res.push({ name: name.trim(), url: lines[i+1]?.trim(), raw: lines[i] });
+            const info = lines[i];
+            const name = info.split(',')[1] || "";
+            const url = lines[i+1]?.trim();
+            if (url && url.startsWith('http')) {
+                res.push({ name: name.trim(), url, raw: info });
+            }
         }
     }
     return res;
 }
 
-// دالة ذكية للتحقق من أن القناة عربية
-function isAr(ch) {
-    const p = (ch.name + ch.raw).toLowerCase();
-    return /[\u0600-\u06FF]/.test(ch.name) || p.includes('ara') || p.includes('egypt') || p.includes('algeria') || p.includes('maroc');
-}
-
-function filterBy(type, jump = false) {
+function filterByCategory(cat) {
     const container = document.getElementById('channels');
     container.innerHTML = '';
-    
-    let filtered = allChannels.filter(ch => {
-        const p = (ch.name + ch.raw).toLowerCase();
-        const arabic = isAr(ch);
 
-        if (type === 'Arabic') return arabic;
-        if (type === 'News') return arabic && (p.includes('news') || p.includes('اخبار'));
-        if (type === 'Sports') return p.includes('sport') || p.includes('bein') || p.includes('football');
-        if (type === 'Movies') return p.includes('movie') || p.includes('action') || p.includes('cinema');
-        if (type === 'Doc') return p.includes('docu') || p.includes('nature') || p.includes('national');
-        if (type === 'Islamic') return p.includes('islam') || p.includes('quran') || p.includes('قرآن');
-        if (type === 'Foreign') return !arabic; // عرض كل ما هو غير عربي
-        return false;
-    });
-
-    // ترتيب: العربي أولاً في الأقسام المشتركة
-    filtered.sort((a, b) => isAr(b) - isAr(a));
+    let filtered = [];
+    if (cat === 'Foreign') {
+        // فلترة الأجنبية: أي قناة لا تحتوي على حروف عربية ولا تنتمي لقائمتك
+        filtered = allChannels.filter(ch => !/[\u0600-\u06FF]/.test(ch.name) && !ch.name.toLowerCase().includes('ara'));
+    } else {
+        // الفلترة التلقائية بناءً على الأسماء في ملف canal.txt 
+        const targetNames = mySelection[cat];
+        filtered = allChannels.filter(ch => {
+            return targetNames.some(target => ch.raw.includes(target) || ch.url.includes(target));
+        });
+    }
 
     filtered.forEach(ch => {
         const div = document.createElement('div');
@@ -133,10 +138,8 @@ function filterBy(type, jump = false) {
     });
 
     refreshFocus();
-    if (jump) {
-        focusIndex = 7; // القفز لأول قناة (تجاوز 7 أزرار في الهيدر)
-        updateFocus();
-    }
+    focusIndex = 7; // القفز للقنوات
+    updateFocus();
 }
 
 function playChannel(url) {
@@ -158,17 +161,17 @@ function toggleUI(show) {
     isUiVisible = show;
     document.getElementById('ui-wrapper').className = show ? '' : 'ui-hidden';
     if (show) {
+        clearTimeout(hideTimeout);
         refreshFocus();
         const playing = document.querySelector('.channel.playing');
         if (playing) focusIndex = focusElements.indexOf(playing);
         updateFocus();
+        hideTimeout = setTimeout(() => toggleUI(false), 8000);
     }
 }
 
-function refreshFocus() {
-    focusElements = Array.from(document.querySelectorAll('.focusable'));
-}
-
+// استيقاظ عند تحريك الفأرة أو ضغط أي زر
+document.addEventListener('mousemove', () => { if (!isUiVisible) toggleUI(true); });
 document.addEventListener('keydown', (e) => {
     if (!isUiVisible) {
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Backspace'].includes(e.key)) {
@@ -176,31 +179,20 @@ document.addEventListener('keydown', (e) => {
             return;
         }
     }
-
-    if (e.key === 'ArrowDown') {
-        if (focusIndex < focusElements.length - 1) focusIndex++;
-    } else if (e.key === 'ArrowUp') {
-        if (focusIndex > 0) focusIndex--;
-    } else if (e.key === 'ArrowLeft') {
-        if (focusIndex >= 7) focusIndex = 0; // العودة لأول زر هيدر
-    } else if (e.key === 'ArrowRight') {
-        if (focusIndex < 7) focusIndex = 7; // القفز للقنوات
-    } else if (e.key === 'Enter') {
-        focusElements[focusIndex].click();
-    } else if (e.key === 'Escape' || e.key === 'Backspace') {
-        toggleUI(false);
-    }
+    if (e.key === 'ArrowDown') focusIndex = Math.min(focusIndex + 1, focusElements.length - 1);
+    else if (e.key === 'ArrowUp') focusIndex = Math.max(focusIndex - 1, 0);
+    else if (e.key === 'ArrowLeft') { if (focusIndex >= 7) focusIndex = 0; }
+    else if (e.key === 'ArrowRight') { if (focusIndex < 7) focusIndex = 7; }
+    else if (e.key === 'Enter') focusElements[focusIndex].click();
+    else if (e.key === 'Escape' || e.key === 'Backspace') toggleUI(false);
     updateFocus();
 });
 
+function refreshFocus() { focusElements = Array.from(document.querySelectorAll('.focusable')); }
 function updateFocus() {
     focusElements.forEach((el, idx) => {
-        if (idx === focusIndex) {
-            el.classList.add('focused');
-            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        } else {
-            el.classList.remove('focused');
-        }
+        el.classList.toggle('focused', idx === focusIndex);
+        if (idx === focusIndex) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
     });
 }
 </script>
